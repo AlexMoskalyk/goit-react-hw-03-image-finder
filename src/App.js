@@ -1,11 +1,12 @@
 import React, { Component } from "react";
-import Button from "./button/Button";
-import ImageGallery from "./imageGallery/ImageGallery";
-import Searchbar from "./searchbar/Searchbar";
-import axios from "axios";
-import Modal from "./modal/Modal";
+import Button from "./Components/button/Button";
+import ImageGallery from "./Components/imageGallery/ImageGallery";
+import Searchbar from "./Components/searchbar/Searchbar";
+// import axios from "axios";
+import Modal from "./Components/modal/Modal";
 import styles from "./App.module.css";
 import Loader from "react-loader-spinner";
+import fetchApi from "./services/API";
 
 class App extends Component {
   state = {
@@ -23,29 +24,40 @@ class App extends Component {
 
   componentDidUpdate(prevProps, prevState) {
     if (prevState.searchedText !== this.state.searchedText) {
-      this.galleryAppear();
+      this.getGalleryAppear();
+    }
+
+    if (
+      prevState.searchedText === this.state.searchedText &&
+      prevState.page !== this.state.page
+    ) {
+      this.getGalleryAppear();
     }
   }
 
-  toggleModal = () => {
-    this.setState(({ showModal }) => ({
-      showModal: !showModal,
-    }));
-  };
-
-  galleryAppear = () => {
+  getGalleryAppear = () => {
     this.setState({ showLoader: true });
-    this.fetchApi()
+
+    fetchApi(this.state.searchedText, this.state.page)
       .then((res) => {
         this.setState((prevState) => ({
-          gallery: [...prevState.gallery, ...res.hits],
-          page: prevState.page + 1,
+          gallery:
+            this.state.page === 1
+              ? [...res.hits]
+              : [...prevState.gallery, ...res.hits],
+
           total: res.total,
         }));
         this.scroll();
       })
       .catch((error) => this.setState({ error }))
       .finally(() => this.setState({ showLoader: false }));
+  };
+
+  toggleModal = () => {
+    this.setState(({ showModal }) => ({
+      showModal: !showModal,
+    }));
   };
 
   scroll = () => {
@@ -55,18 +67,8 @@ class App extends Component {
     });
   };
 
-  fetchApi = () => {
-    const BASE_URL = "https://pixabay.com/api/";
-    const APIKEY = "23308675-3bdf2416796cf281a4ef874ab";
-    return axios
-      .get(
-        `${BASE_URL}?q=${this.state.searchedText}&page=${this.state.page}&key=${APIKEY}&image_type=photo&orientation=horizontal&per_page=12`
-      )
-      .then((res) => res.data);
-  };
-
   onHandleSearchbarSubmit = (searchedText) => {
-    this.setState({ searchedText });
+    this.setState({ searchedText, page: 1 });
   };
 
   onPictureClick = (largeImg) => {
@@ -76,6 +78,10 @@ class App extends Component {
 
   showBtnLoadMore = () => {
     return Math.ceil(this.state.total / 12) !== this.state.page - 1;
+  };
+
+  handlePageIncr = () => {
+    this.setState({ page: this.state.page + 1 });
   };
 
   render() {
@@ -99,9 +105,11 @@ class App extends Component {
           />
         )}
 
-        {this.state.gallery.length > 0 && (
-          <Button galleryAppear={this.galleryAppear} />
-        )}
+        {this.state.gallery.length > 0 &&
+          !this.state.showLoader &&
+          this.showBtnLoadMore && (
+            <Button galleryAppear={this.handlePageIncr} />
+          )}
 
         {this.state.showModal && (
           <Modal closeModal={this.toggleModal}>
@@ -114,4 +122,3 @@ class App extends Component {
 }
 
 export default App;
-//
